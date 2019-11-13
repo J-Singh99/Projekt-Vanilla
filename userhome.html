@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+{% extends "job_scraping/base.html" %}
+
+{% block body %}
+{% if not list1 %}
+<form method="post">
+  {% csrf_token %}
+      <label for="job_name"><b>Job Name</b></label>
+      <input type="text" placeholder="Enter the job name" name="job_name">
+      <hr>
+
+      <label for="city"><b>City</b></label>
+      <input type="text" placeholder="Enter the city" name="city">
+      <hr>
+
+      <button type="submit" name="button">Find Jobs</button>
+
+  </form>
+{% else %}
+<form method="POST">
+  {% csrf_token %}
+<table class="table table-hover table-bordered">
+      <thead>
+        <tr>
+          <th>Job Title</th>
+          <th>Company Name</th>
+          <th>Location</th>
+          <th>Salary</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        {% for value in list1 %}
+           <tr>
+             {% for v in value %}
+             <td>{{v}}</td>
+             {% endfor %}
+           </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </form>
+    <a href="{% url 'userhome' %}" class="btn btn-info" role="button">Back to Search</a>
+  {% endif %}
+
+
+{% endblock %}
