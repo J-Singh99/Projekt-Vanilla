@@ -1,0 +1,82 @@
+@login_required
+def userhome(request):
+    Job_Details.objects.all().delete()
+    if request.method == "POST":
+        driver = webdriver.Chrome(r"C:\Users\Dell\Downloads\chromedriver.exe")
+        driver.get('https://www.indeed.com')
+        driver.refresh()
+        jobs = request.POST.get('job_name')
+        loc = request.POST.get('city')
+        print(jobs)
+        print(loc)
+        what = driver.find_element_by_id('text-input-what')
+        where = driver.find_element_by_id('text-input-where')
+        what.send_keys(Keys.CONTROL + "a")
+        what.send_keys(Keys.DELETE)
+        what.send_keys(jobs)
+        where.send_keys(Keys.CONTROL + "a")
+        where.send_keys(Keys.DELETE)
+        where.send_keys(loc)
+        where.send_keys(Keys.RETURN)
+        df = pd.DataFrame(columns=('Job_Title', 'Company_Name', 'Location', 'Salary', 'Job_Summary'))
+        count = 1
+        while count != 3:
+            print('Page :', count)
+            count = count + 1
+            source = driver.page_source
+            soup = BeautifulSoup(source, 'html.parser')
+            SOUP_JOBS = soup.find_all(class_= 'jobsearch-SerpJobCard unifiedRow row result clickcard')
+            SELENIUM_JOBS = driver.find_elements_by_xpath("//div[@class = 'location accessible-contrast-color-location']")
+            iterator = 0
+            for i in range(3) :
+                SOUP_JOBS = soup.find_all(class_= 'jobsearch-SerpJobCard unifiedRow row result clickcard')
+                SELENIUM_JOBS = driver.find_elements_by_xpath("//div[@class = 'jobsearch-SerpJobCard unifiedRow row result clickcard']")
+                Job_Title = SOUP_JOBS[i].find(attrs={'data-tn-element' : 'jobTitle'})['title']
+                print(Job_Title)
+                Company_Name = SOUP_JOBS[i].find(class_ = 'company').text
+                Location = SOUP_JOBS[i].find(class_ = 'location accessible-contrast-color-location').text
+                print(Location)
+                Salary = 'NEGOTIABLE'
+                if SOUP_JOBS[i].find(class_ = 'salaryText') != None:
+                    Salary = SOUP_JOBS[i].find(class_ = 'salaryText').text
+                print(Salary)
+                Job_Summary = ''
+                index_num = iterator
+                SELENIUM_JOBS[index_num].click()
+                num_tabs = driver.window_handles
+                if len(num_tabs) == 2:
+                    driver.switch_to_window(num_tabs[1])
+                    Job_Summary = driver.find_element_by_xpath("//div[@class='jobsearch-ViewJobLayout-jobDisplay icl-Grid-col icl-u-xs-span12 icl-u-lg-span7']").text
+                    driver.close()
+                    driver.switch_to_window(num_tabs[0])
+
+                    if len(driver.window_handles) != 1:
+                        print('OHHHHH!!! OHHHHHHHHHH!!! ERROR!!!!!!')
+                        break
+
+                else:
+                    print('OHHHHH!!! OHHHHHHHHHH!!! ERROR!!!!!!')
+                    break
+
+                print(Company_Name)
+                print(Job_Summary)
+                csv_dict = [{'Job_Title':Job_Title, 'Company_Name':Company_Name, 'Location':Location, 'Salary':Salary, 'Job_Summary':Job_Summary}]
+                temp_df_entry = pd.DataFrame(csv_dict)
+                b=Job_Details.objects.create(job_name=Job_Title, company_name=Company_Name, location=Location, salary=Salary, summary=Job_Summary)
+                b.save()
+                df = df.append(temp_df_entry, ignore_index = True)
+                df.to_csv('God_Given_Gift.csv')
+                try:
+                    next_page = driver.find_element_by_partial_link_text('Next ')
+                    next_page.click()
+                except ElementClickInterceptedException:
+                    driver.find_element_by_partial_link_text('No, thanks').click()
+                    print('Pop Up Closed!!')
+                    next_page = driver.find_element_by_partial_link_text('Next ')
+                    next_page.click()
+                except:
+                    pass
+                iterator = iterator + 1
+
+            return HttpResponseRedirect(reverse('listofjobs'))
+    return render(request,'job_scraping/userhome.html')
