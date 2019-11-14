@@ -2,7 +2,7 @@ from django.shortcuts import render
 from job_scraping.forms import UserForm, UserProfileInfoForm
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.models import User
-from job_scraping.models import UserProfileInfo, Job_Details
+from job_scraping.models import UserProfileInfo, Job_Details, Sorted_Job_Details
 from django.contrib.auth import authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login as auth_login
@@ -45,8 +45,8 @@ def login(request):
 
 
 @login_required
-
 def userhome(request):
+    Job_Details.objects.all().delete()
     if request.method == "POST":
         driver = webdriver.Chrome(r"C:\Users\Dell\Downloads\chromedriver.exe")
         driver.get('https://www.indeed.com')
@@ -57,51 +57,31 @@ def userhome(request):
         print(loc)
         what = driver.find_element_by_id('text-input-what')
         where = driver.find_element_by_id('text-input-where')
-
         what.send_keys(Keys.CONTROL + "a")
         what.send_keys(Keys.DELETE)
         what.send_keys(jobs)
-
         where.send_keys(Keys.CONTROL + "a")
         where.send_keys(Keys.DELETE)
         where.send_keys(loc)
         where.send_keys(Keys.RETURN)
         df = pd.DataFrame(columns=('Job_Title', 'Company_Name', 'Location', 'Salary', 'Job_Summary'))
-        count = 1
-        total_pages = int(input('Enter the number of pages to iterate over. Below 5 works best.'))
+        count = 0
 
-        while count != total_pages:
+        while count != 3:
             print('Page :', count)
             count = count + 1
-
-            # Get source
             source = driver.page_source
             soup = BeautifulSoup(source, 'html.parser')
-
-            # Make a SOUP iterable list
             SOUP_JOBS = soup.find_all(class_= 'jobsearch-SerpJobCard unifiedRow row result clickcard')
-            # Make a SELENIUM iterable list
             SELENIUM_JOBS = driver.find_elements_by_xpath("//div[@class = 'location accessible-contrast-color-location']")
-
-
-            # Max_iterator = len(SOUP_JOBS)
             iterator = 0
-
-            # Run loop to store things in CSV
+            print(len(SELENIUM_JOBS))
             for i in range(3) :
-
-
-                # Make a SOUP iterable list
                 SOUP_JOBS = soup.find_all(class_= 'jobsearch-SerpJobCard unifiedRow row result clickcard')
-
-                # Make a SELENIUM iterable list
                 SELENIUM_JOBS = driver.find_elements_by_xpath("//div[@class = 'jobsearch-SerpJobCard unifiedRow row result clickcard']")
-
-                # Make variables to store info and use later
                 Job_Title = SOUP_JOBS[i].find(attrs={'data-tn-element' : 'jobTitle'})['title']
                 print(Job_Title)
                 Company_Name = SOUP_JOBS[i].find(class_ = 'company').text
-
                 Location = SOUP_JOBS[i].find(class_ = 'location accessible-contrast-color-location').text
                 print(Location)
                 Salary = 'NEGOTIABLE'
@@ -109,70 +89,57 @@ def userhome(request):
                     Salary = SOUP_JOBS[i].find(class_ = 'salaryText').text
                 print(Salary)
                 Job_Summary = ''
-
-
-                # Find card number
                 index_num = iterator
+                try:
+                    SELENIUM_JOBS[i].click()
+                except ElementClickInterceptedException:
+                    driver.find_element_by_partial_link_text('No, thanks').click()
+                    print('Pop up closed while clicking card!!')
+                    SELENIUM_JOBS[i].click()
 
-                # Focus on element, click it
-                SELENIUM_JOBS[index_num].click()
 
-                # Only if new page has opened
+
                 num_tabs = driver.window_handles
                 if len(num_tabs) == 2:
-
-                    # Switch to new tab
                     driver.switch_to_window(num_tabs[1])
-
-                    # Find and store Job_Summary
                     Job_Summary = driver.find_element_by_xpath("//div[@class='jobsearch-ViewJobLayout-jobDisplay icl-Grid-col icl-u-xs-span12 icl-u-lg-span7']").text
-
-                    # Move on in life
                     driver.close()
-                    driver.switch_to_window(num_tabs[0])
+                    try:
+                        driver.switch_to_window(num_tabs[0])
+                    except ElementClickInterceptedException:
+                        driver.find_element_by_partial_link_text('No, thanks').click()
+                        print('Pop up closed while switching back!!')
+                        driver.switch_to_window(num_tabs[0])
+
 
                     if len(driver.window_handles) != 1:
                         print('OHHHHH!!! OHHHHHHHHHH!!! ERROR!!!!!!')
-                        print('DROP EVERYTHING AND CALL HELP!!! THIS IS THE BIGGEST ERROR EVER!!!')
-                        print('Please, PLEASE, call Jaspreet!')
                         break
 
                 else:
                     print('OHHHHH!!! OHHHHHHHHHH!!! ERROR!!!!!!')
-                    print('Please, PLEASE, call Jaspreet!')
                     break
-
 
                 print(Company_Name)
                 print(Job_Summary)
-                #creating an entry to add to CSV file
                 csv_dict = [{'Job_Title':Job_Title, 'Company_Name':Company_Name, 'Location':Location, 'Salary':Salary, 'Job_Summary':Job_Summary}]
                 temp_df_entry = pd.DataFrame(csv_dict)
                 b=Job_Details.objects.create(job_name=Job_Title, company_name=Company_Name, location=Location, salary=Salary, summary=Job_Summary)
                 b.save()
-                #pushing entry into CSV file
                 df = df.append(temp_df_entry, ignore_index = True)
-                df.to_csv('Go.csv')
-                print(df.to_html())
+                df.to_csv('God_Given_Gift.csv')
+            try:
+                next_page = driver.find_element_by_partial_link_text('Next ')
+                next_page.click()
+            except ElementClickInterceptedException:
+                driver.find_element_by_partial_link_text('No, thanks').click()
+                print('Pop Up Closed!!')
+                next_page = driver.find_element_by_partial_link_text('Next ')
+                next_page.click()
+            except:
+                pass
 
-                # Click the next page
-                try:
-                    next_page = driver.find_element_by_partial_link_text('Next ')
-                    next_page.click()
-                except ElementClickInterceptedException:
-                    driver.find_element_by_partial_link_text('No, thanks').click()
-                    print('Pop Up Closed!!')
-                    next_page = driver.find_element_by_partial_link_text('Next ')
-                    next_page.click()
-                except:
-                    pass
-
-                iterator = iterator + 1
-
-            driver.quit()
-            return HttpResponseRedirect(reverse('listofjobs'))
-
-
+        return HttpResponseRedirect(reverse('listofjobs'))
     return render(request,'job_scraping/userhome.html')
 
 
@@ -213,6 +180,9 @@ def registration(request):
 
     return render(request,'job_scraping/register.html', {'user_form':form} )
 
+
+
+
 @method_decorator(login_required, name='dispatch')
 class listofjobs(ListView):
     model=Job_Details
@@ -229,3 +199,78 @@ class Job_Detail(DetailView):
     model=Job_Details
     context_object_name='Job_Detailing'
     template_name='job_scraping/detail.html'
+
+
+@method_decorator(login_required, name='dispatch')
+class listofjobs_sorted(ListView):
+    model=Sorted_Job_Details
+    context_object_name='Sorted_Job_Details'
+    template_name='job_scraping/listofjobs_sorted.html'
+
+    def get_queryset(self):
+        queryset = super(listofjobs_sorted, self).get_queryset()
+        return queryset
+
+def sorting(request):
+
+    Sorted_Job_Details.objects.all().delete()
+    model=Sorted_Job_Details
+    context_object_name='Sorted_Job_Details'
+    template_name='job_scraping/listofjobs_sorted.html'
+    df = pd.read_csv('God_Given_Gift.csv')
+    df = df.drop("Unnamed: 0", axis=1)
+    df.loc[df.Salary == 'NEGOTIABLE', 'Salary'] = 0
+    Min_Salary = []
+    Max_Salary = []
+
+    for sal in df['Salary']:
+        sal=str(sal)
+        print(sal)
+        if sal =='0':
+            Max_Salary.append(0)
+
+        if 'month' in sal:
+            start_index=sal.find('-')
+            if '-' in sal:
+                print('hi')
+                end_index=sal.find('a')
+                str_final=sal[start_index+3:end_index-1]
+                str_final=str_final.replace(',','')
+                str_int_final=float(str_final)
+                Max_Salary.append(str_int_final)
+
+            if '-' not in sal:
+                end_index=sal.find('a')
+                str_final=sal[2:end_index-1]
+                str_final=str_final.replace(',','')
+                str_int_final=float(str_final)
+                Max_Salary.append(str_int_final)
+
+
+        if 'year' in sal:
+            if '-' in sal:
+                start_index=sal.find('-')
+                end_index=sal.find('a')
+                str_final=sal[start_index+3:end_index-1]
+                str_final=str_final.replace(',','')
+                str_int_final=float(str_final)/12
+                Max_Salary.append(str_int_final)
+
+
+            if '-' not in sal:
+                end_index=sal.find('a')
+                str_final=sal[2:end_index-1]
+                str_final=str_final.replace(',','')
+                str_int_final=float(str_final)/12
+                Max_Salary.append(str_int_final)
+
+
+    print(Max_Salary)
+    df['Max_Salary']= Max_Salary
+    df.sort_values('Max_Salary', ascending=False, inplace=True)
+    print(df)
+
+    for i in range(0,df.shape[0]):
+        b=Sorted_Job_Details.objects.create(job_name=df.iloc[i][0], company_name=df.iloc[i][1], location=df.iloc[i][2], salary=df.iloc[i][3], summary=df.iloc[i][4])
+        b.save()
+    return render(request,'job_scraping/intermediate.html')
