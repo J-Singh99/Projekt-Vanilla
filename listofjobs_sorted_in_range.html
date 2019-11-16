@@ -1,0 +1,39 @@
+{% extends "job_scraping/base.html" %}
+{% block body %}
+
+  <div class="container">
+    <h2>Inbox</h2>
+    <table class="table table-hover table-bordered">
+      <thead>
+        <tr>
+          <th>Job Title</th>
+          <th>Company Name</th>
+          <th>Location</th>
+          <th>Salary</th>
+
+
+
+      </tr>
+      </thead>
+      <tbody>
+
+        {% for job in Sorted_Job_Details %}
+          <tr>
+          <td><a href='{{job.id}}'>{{job.job_name}}</a></td>
+          <td>{{job.company_name}}</td>
+          <td>{{job.location}}</td>
+          <td>{{job.salary}}</td>
+        </tr>
+        {% endfor %}
+
+      </tbody>
+    </table>
+  </div>
+
+
+
+  </ul>
+  <a href="{% url 'userhome' %}" class="btn btn-info" role="button">Back to Search</a>
+  <a href="{% url 'listofjobs' %}" class="btn btn-info" role="button">Back to List</a>
+
+{% endblock %}

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+{% extends "job_scraping/base.html" %}
+
+{% block body %}
+<!DOCTYPE html>
+
+<title>Job Description</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<body>
+  <div class="w3-container">
+  <div class="w3-panel w3-border w3-light-grey w3-round-large">
+  <h2 class="display-3">Job Description</h2>
+  {{Job_Detailing.summary}}
+
+
+</div>
+</div>
+
+<a href="{% url 'listofjobs_sorted_in_range' %}" class="btn btn-info" role="button">Back to List</a>
+
+
+{% endblock %}

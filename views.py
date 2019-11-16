@@ -201,18 +201,8 @@ class Job_Detail(DetailView):
     template_name='job_scraping/detail.html'
 
 
-@method_decorator(login_required, name='dispatch')
-class listofjobs_sorted(ListView):
-    model=Sorted_Job_Details
-    context_object_name='Sorted_Job_Details'
-    template_name='job_scraping/listofjobs_sorted.html'
-
-    def get_queryset(self):
-        queryset = super(listofjobs_sorted, self).get_queryset()
-        return queryset
-
+@login_required
 def sorting(request):
-
     Sorted_Job_Details.objects.all().delete()
     model=Sorted_Job_Details
     context_object_name='Sorted_Job_Details'
@@ -224,49 +214,56 @@ def sorting(request):
     Max_Salary = []
 
     for sal in df['Salary']:
-        sal=str(sal)
-        print(sal)
+
+    sal=str(sal)
+
         if sal =='0':
             Max_Salary.append(0)
+            Min_Salary.append(0)
 
-        if 'month' in sal:
-            start_index=sal.find('-')
+        elif 'month' in sal:
             if '-' in sal:
-                print('hi')
+                start_index=sal.find('-')
                 end_index=sal.find('a')
+
                 str_final=sal[start_index+3:end_index-1]
                 str_final=str_final.replace(',','')
-                str_int_final=float(str_final)
-                Max_Salary.append(str_int_final)
+                str_int_final=int(float(str_final))
 
-            if '-' not in sal:
+                Max_Salary.append(str_int_final)
+                Min_Salary.append(int(float(sal[2:start_index-1].replace(',',''))))
+
+            else:
                 end_index=sal.find('a')
                 str_final=sal[2:end_index-1]
                 str_final=str_final.replace(',','')
-                str_int_final=float(str_final)
+                str_int_final=int(float(str_final))
                 Max_Salary.append(str_int_final)
+                Min_Salary.append(str_int_final)
 
 
-        if 'year' in sal:
+        elif 'year' in sal:
             if '-' in sal:
                 start_index=sal.find('-')
                 end_index=sal.find('a')
                 str_final=sal[start_index+3:end_index-1]
                 str_final=str_final.replace(',','')
-                str_int_final=float(str_final)/12
+                str_int_final=int(float(str_final)/12)
                 Max_Salary.append(str_int_final)
+                Min_Salary.append(int(float(sal[2:start_index-1].replace(',',''))/12))
+            else:
+                        end_index=sal.find('a')
+                        str_final=sal[2:end_index-1]
+                        str_final=str_final.replace(',','')
+                        str_int_final=int(float(str_final)/12)
+                        Max_Salary.append(str_int_final)
+                        Min_Salary.append(str_int_final)
 
+        else:
+            print('Can\'t sort, LOL!')
 
-            if '-' not in sal:
-                end_index=sal.find('a')
-                str_final=sal[2:end_index-1]
-                str_final=str_final.replace(',','')
-                str_int_final=float(str_final)/12
-                Max_Salary.append(str_int_final)
-
-
-    print(Max_Salary)
-    df['Max_Salary']= Max_Salary
+    df['Min_Salary'] = Min_Salary
+    df['Max_Salary'] = Max_Salary
     df.sort_values('Max_Salary', ascending=False, inplace=True)
     print(df)
 
@@ -274,3 +271,112 @@ def sorting(request):
         b=Sorted_Job_Details.objects.create(job_name=df.iloc[i][0], company_name=df.iloc[i][1], location=df.iloc[i][2], salary=df.iloc[i][3], summary=df.iloc[i][4])
         b.save()
     return render(request,'job_scraping/intermediate.html')
+
+
+
+def sortinginrange(request):
+    Sorted_in_range.objects.all().delete()
+    model=Sorted_in_range
+    context_object_name='Sorted_in_range'
+    template_name='job_scraping/list_of_jobs_inrange.html'
+    df = pd.read_csv('God_Given_Gift.csv')
+    df = df.drop("Unnamed: 0", axis=1)
+    df.loc[df.Salary == 'NEGOTIABLE', 'Salary'] = 0
+    Min_Salary = []
+    Max_Salary = []
+
+    for sal in df['Salary']:
+
+    sal=str(sal)
+
+        if sal =='0':
+            Max_Salary.append(0)
+            Min_Salary.append(0)
+
+        elif 'month' in sal:
+            if '-' in sal:
+                start_index=sal.find('-')
+                end_index=sal.find('a')
+
+                str_final=sal[start_index+3:end_index-1]
+                str_final=str_final.replace(',','')
+                str_int_final=int(float(str_final))
+
+                Max_Salary.append(str_int_final)
+                Min_Salary.append(int(float(sal[2:start_index-1].replace(',',''))))
+
+            else:
+                end_index=sal.find('a')
+                str_final=sal[2:end_index-1]
+                str_final=str_final.replace(',','')
+                str_int_final=int(float(str_final))
+                Max_Salary.append(str_int_final)
+                Min_Salary.append(str_int_final)
+
+
+        elif 'year' in sal:
+            if '-' in sal:
+                start_index=sal.find('-')
+                end_index=sal.find('a')
+                str_final=sal[start_index+3:end_index-1]
+                str_final=str_final.replace(',','')
+                str_int_final=int(float(str_final)/12)
+                Max_Salary.append(str_int_final)
+                Min_Salary.append(int(float(sal[2:start_index-1].replace(',',''))/12))
+            else:
+                        end_index=sal.find('a')
+                        str_final=sal[2:end_index-1]
+                        str_final=str_final.replace(',','')
+                        str_int_final=int(float(str_final)/12)
+                        Max_Salary.append(str_int_final)
+                        Min_Salary.append(str_int_final)
+
+        else:
+            print('Can\'t sort, LOL!')
+
+    df['Min_Salary'] = Min_Salary
+    df['Max_Salary'] = Max_Salary
+
+    Suitable_jobs = df[(df['Min_Salary'] > min_salary) & (df['Max_Salary'] < max_salary)]
+    for i in range(0,df.shape[0]):
+        b=Sorted_in_range.objects.create(job_name=Suitable_jobs.iloc[i][0], company_name=df.iloc[i][1], location=Suitable_jobs.iloc[i][2], salary=Suitable_jobs.iloc[i][3], summary=Suitable_jobs.iloc[i][4])
+        b.save()
+    return render(request,'job_scraping/intermediate_range.html')
+
+
+@method_decorator(login_required, name='dispatch')
+class Sorted_Job_Detail(DetailView):
+    model=Sorted_Job_Details
+    context_object_name='Job_Detailing'
+    template_name='job_scraping/sorted_detail.html'
+
+
+
+@method_decorator(login_required, name='dispatch')
+class listofjobs_sorted(ListView):
+    model=Sorted_Job_Details
+    context_object_name='Sorted_Job_Details'
+    template_name='job_scraping/listofjobs_sorted.html'
+
+    def get_queryset(self):
+        queryset = super(listofjobs_sorted, self).get_queryset()
+        return queryset
+
+
+@method_decorator(login_required, name='dispatch')
+class Sorted_Job_Detail_in_range(DetailView):
+    model=Sorted_in_range
+    context_object_name='Job_Detailing'
+    template_name='job_scraping/Sorted_detail_range.html'
+
+
+
+@method_decorator(login_required, name='dispatch')
+class listofjobs_sorted_in_range(ListView):
+    model=Sorted_in_range
+    context_object_name='Sorted_Job_Details'
+    template_name='job_scraping/listofjobs_sorted_in_range.html'
+
+    def get_queryset(self):
+        queryset = super(listofjobs_sorted, self).get_queryset()
+        return queryset

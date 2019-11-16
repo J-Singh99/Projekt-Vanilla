@@ -33,3 +33,13 @@ class Sorted_Job_Details(models.Model):
 
     def __str__(self):
         return self.job_name
+
+class Sorted_in_range(models.Model):
+    job_name=models.CharField(max_length=100)
+    company_name=models.CharField(max_length=100)
+    location=models.CharField(max_length=100)
+    salary=models.CharField(max_length=100)
+    summary=models.CharField(max_length=1000)
+
+    def __str__(self):
+        return self.job_name
